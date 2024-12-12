@@ -21,6 +21,7 @@ customDNS=0
 fileNameScheme=             # Custom file naming scheme, default is $title
 customFNS=0
 chapterNameScheme=          # Custom chapter naming scheme, default is '$title-$(printf %0${#chaptercount}d $chapternum) $chapter' (BookTitle-01 Chapter 1)
+windowsNaming=0             # Use windows compatible file naming scheme 
 customCNS=0
 completedir=                # Optional location to move aax files once the decoding is complete.
 container=mp3               # Just in case we need to change the container.  Used for M4A to M4B
@@ -68,6 +69,8 @@ while true; do
     -F | --file-naming-scheme ) fileNameScheme="$2"; customFNS=1;                       shift 2 ;;
                        # Use a custom chapter naming scheme, with variables.
     --chapter-naming-scheme ) chapterNameScheme="$2"; customCNS=1;                      shift 2 ;;
+                      # Use windows compatible file naming scheme
+    -w | --windows-naming ) windowsNaming=1;                                            shift ;;
                       # Move the AAX file to a new directory when decoding is complete.
     -C | --complete_dir ) completedir="$2";                                             shift 2 ;;
                       # Authorization code associate with the AAX file(s)
@@ -594,6 +597,19 @@ get_bitrate() {
   get_metadata_value bitrate | $GREP --only-matching '[0-9]\+'
 }
 
+# -----
+# Windows compatible file naming scheme
+get_windows_naming() {
+  local newName
+  newName="$1"
+
+  if [[ "${windowsNaming}" == "1" ]]; then
+    newName=${newName//[:*?\"<>|]/-}
+    newName=${newName//\\/-}
+  fi
+  echo "${newName}"
+}
+
 # Save the original value, since in the for loop we overwrite
 # $audibleCli in case the file is aaxc. If the file is the
 # old aax, reset the variable to be the one passed by the user
@@ -708,6 +724,9 @@ do
     output_directory="$(dirname "${aax_file}")/${currentDirNameScheme}"
   fi
 
+  # Use windows compatible file naming scheme if the switch is set
+  output_directory=$(get_windows_naming "${output_directory}")
+
   # Define the output_file
   if [ "${customFNS}" == "1" ]; then
     currentFileNameScheme="$(eval echo "${fileNameScheme}")"
@@ -715,6 +734,9 @@ do
     # The Default
     currentFileNameScheme="${title}"
   fi
+
+  # Use windows compatible file naming scheme if the switch is set
+  currentFileNameScheme=$(get_windows_naming "${currentFileNameScheme}")
   output_file="${output_directory}/${currentFileNameScheme}.${extension}"
 
   if [[ "${noclobber}" = "1" ]] && [[ -d "${output_directory}" ]]; then
@@ -876,6 +898,8 @@ do
           # The Default
           chapter_title="${title}-$(printf %0${#chaptercount}d $chapternum) ${chapter}"
         fi
+        # Use windows compatible file naming scheme if the switch is set
+        chapter_title=$(get_windows_naming "${chapter_title}")
         chapter_file="${output_directory}/${chapter_title}.${extension}"
 
         # Since the .aax file allready got converted we can use
